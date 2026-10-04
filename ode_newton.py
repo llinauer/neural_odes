@@ -20,61 +20,76 @@ def uniform_constant_force(t, state):
     return np.array([v, F/m])
 
 
-def plot_solutions(xs, t, name="", title=""):
-    fig = go.Figure()
-
-    for x, name in xs:
-        fig.add_trace(go.Scatter(y=x, x=t, mode='lines+markers', name=name))
-    fig.update_layout(title=dict(text=title), yaxis_zeroline=False, xaxis_zeroline=False)
-    fig.show()
-
-
-def animate_solutions(xs, t, title="", filename="trajectories.gif"):
-    fig, ax = plt.subplots(figsize=(8, 5))
+def animate_solutions_with_particles(xs, t, title="", filename="trajectories.gif", fps=50):
+    fig, (ax_plot, ax_drop) = plt.subplots(
+        1, 2,
+        figsize=(10, 5),
+        gridspec_kw={"width_ratios": [3, 1]}
+    )
 
     all_x = np.concatenate([x for x, _ in xs])
-    margin = 0.1 * (all_x.max() - all_x.min())
+    span = all_x.max() - all_x.min()
+    margin = 0.1 * span if span > 0 else 0.1
 
-    ax.set_xlim(t[0], t[-1])
-    ax.set_ylim(all_x.min() - margin, all_x.max() + margin)
+    y_min = all_x.min() - margin
+    y_max = all_x.max() + margin
 
-    ax.set_xlabel("Time [s]")
-    ax.set_ylabel("Height [m]")
-    ax.set_title(title)
-    ax.grid(alpha=0.3)
+    # Left: x(t) plot
+    ax_plot.set_xlim(t[0], t[-1])
+    ax_plot.set_ylim(y_min, y_max)
+    ax_plot.set_xlabel("Time [s]")
+    ax_plot.set_ylabel("Height [m]")
+    ax_plot.set_title(title)
+    ax_plot.grid(alpha=0.3)
+
+    # Right: falling particles
+    particle_x_positions = np.arange(len(xs))
+    ax_drop.set_xlim(-0.5, len(xs) - 0.5)
+    ax_drop.set_ylim(y_min, y_max)
+    ax_drop.set_xticks(particle_x_positions)
+    ax_drop.set_xticklabels([])
+    ax_drop.set_title("Particles")
+    ax_drop.grid(alpha=0.2, axis="y")
+    ax_drop.axhline(0, linewidth=1)
 
     lines = []
     points = []
+    particles = []
 
-    for x, name in xs:
-        line, = ax.plot([], [], label=name)
-        point, = ax.plot([], [], "o")
+    for i, (x, name) in enumerate(xs):
+        line, = ax_plot.plot([], [], label=name)
+        color = line.get_color()
+
+        point, = ax_plot.plot([], [], "o", color=color)
+        particle, = ax_drop.plot([particle_x_positions[i]], [x[0]], "o", color=color, markersize=12)
 
         lines.append(line)
         points.append(point)
+        particles.append(particle)
 
-    ax.legend()
+    ax_plot.legend(loc="upper left")
 
     def update(frame):
-        for (x, _), line, point in zip(xs, lines, points):
+        artists = []
+
+        for i, ((x, _), line, point, particle) in enumerate(zip(xs, lines, points, particles)):
             line.set_data(t[:frame + 1], x[:frame + 1])
             point.set_data([t[frame]], [x[frame]])
+            particle.set_data([particle_x_positions[i]], [x[frame]])
 
-        return lines + points
+            artists.extend([line, point, particle])
+
+        return artists
 
     animation = FuncAnimation(
         fig,
         update,
         frames=len(t),
-        interval=50,
+        interval=1000 / fps,
         blit=True
     )
 
-    animation.save(
-        filename,
-        writer=PillowWriter(fps=20)
-    )
-
+    animation.save(filename, writer=PillowWriter(fps=fps))
     plt.close(fig)
 
 
@@ -83,15 +98,15 @@ def main():
     # start at t=0, solve until t=1
     t_span = np.array([t0, t1])
     # times at which the solution should be evaluated
-    t_eval = np.linspace(t0, t1, 200)
+    t_eval = np.linspace(t0, t1, 500)
 
     solutions = []
     # construct a range of different initial velocities
     for v in [0., 1., 2., 3.]:
         solution = solve_ivp(uniform_constant_force, t_span, np.array([x0, v]), t_eval=t_eval, dense_output=True)
-        solutions.append((solution.y[0, :], f"x0={x0}, v0={v}"))
+        solutions.append((solution.y[0, :], f"x0={x0}m, v0={v} $m/s²$"))
     #plot_solutions(solutions, solution.t, "x0=0, v0=0", "Particle position vs. time")
-    animate_solutions(
+    animate_solutions_with_particles(
         solutions,
         solution.t,
         title="Particle position vs. time",
