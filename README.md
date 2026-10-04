@@ -14,9 +14,12 @@ Some time passed and I came across (WDH) a video from Steven Brunton (whom I rea
 That's when I finally decided that I would never truly comprehend NeuralODEs without implementing them myself. And that's what this repo is for.
 
 
-## Background
+# Background
 
 NeuralODE or Neural Ordinary Differential equations are not that different from the way we encounter Neural Networks in other places of the Machine Learning world. Neural Networks play a big role. Just how we use them is quite counterintuitive. Let me show you.
+
+## ODEs
+
 
 First, a quick recap. An ordinary differential equation (ODE) is a differential equation dependent on only a single (independent) variable [https://en.wikipedia.org/wiki/Ordinary_differential_equation]. A very simple ODE is Newton's second law:
 
@@ -36,8 +39,37 @@ $$
  m \frac{d²x}{dt²} = F(x, t)
 $$
 
+or 
+
+$$
+ \frac{d²x}{dt²} = \frac{F(x, t)}{m}
+$$
+
+if we bring the mass to the other side.
+
 This is an ODE whose solutions would describe the motion of a particle under the force $F(x,t)$. To actually get solutions for real-world systems you want to model with your equations, you need initial conditions. Two in this case, because we have a second-order (two derivatives w.r.t. time) ODE. These are the initial position and initial velocity of the particle.
 
+There are plenty of ways to solve ODEs and I don't want to even touch that topic here. In this very simple case, we could even solve it analytically (i.e. just integrating it) but in the usual case, one would use some numerical method.
+
+An even simpler example for this already very simple setup is when the force $F(x,t)$ is constant. Say $9.81 \:N$, as it would be for a mass of $m=1\:kg$ in the earths gravitational field. The corresponding equation is then:
+
+$$
+ \frac{d²x}{dt²} = 9.81 \frac{m}{s²}
+$$
 
 
+For some particles dropped at the height of $1\:m$, with different initial velocities, we get solutions that look like:
 
+![Trajectories](trajectories.gif)
+
+Neat, right! The trajectories of the falling particles describe parabolas. We can quickly check if this makes sense by integrating the left hand side of the ODE twice w.r.t. time.
+If we do that, the position $x$ turns out to be proportional to $t²$, hence the parabolic shape.
+
+
+Great. The most general form we can write an ODE is:
+
+$$
+  \frac{dx(t)}{dt} = f(x(t), t, \theta)
+$$
+
+The dependet variable (also called state) is $x(t)$, the independent variable is time $t$. The evolution of the state $\frac{dx(t)}{dt}$ is governed by the function $f(x(t), t, \theta)$, which can depend on the state $x(t)$ itself, time explicitly and also some parameters $\theta$.
